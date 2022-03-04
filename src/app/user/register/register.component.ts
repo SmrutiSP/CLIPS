@@ -1,6 +1,15 @@
 import { Component, OnInit } from '@angular/core';
 import { FormGroup,FormControl,Validators } from '@angular/forms';
 import { ConfirmPasswordValidator } from './confirm-password.validator';
+import {AngularFireAuth} from '@angular/fire/compat/auth';
+import { AngularFirestore } from '@angular/fire/compat/firestore';
+
+interface userData {
+  name: string;
+  email: string;
+  age:number;
+  phoneNumber: number;
+}
 
 @Component({
   selector: 'app-register',
@@ -8,6 +17,7 @@ import { ConfirmPasswordValidator } from './confirm-password.validator';
   styleUrls: ['./register.component.css']
 })
 export class RegisterComponent {
+  inSubmission = true;
   registerForm = new FormGroup({
     name: new FormControl('',[
         Validators.required,
@@ -34,6 +44,8 @@ export class RegisterComponent {
     ])
   },ConfirmPasswordValidator.confirmPassword)
 
+  constructor(private auth:AngularFireAuth, private db:AngularFirestore) {}
+
   get name() {
     return this.registerForm.get('name');
   }
@@ -51,5 +63,23 @@ export class RegisterComponent {
   }
   get phoneNumber() {
     return this.registerForm.get('phoneNumber');
+  }
+  async register() {
+    this.inSubmission = true;
+    const {email,password,name,age,phoneNumber} = this.registerForm.value;
+    try {
+      const userCredential = await this.auth.createUserWithEmailAndPassword(email,password);
+
+      if(!userCredential.user) {
+        throw new Error('user does not exist');
+      }
+      await this.db.collection<userData>('users').doc(userCredential.user.uid).set({
+        name, email, age, phoneNumber
+      })
+      alert('Account created successfully!')
+    } catch(e) {
+      alert('An unexpected error has occurred!');
+      this.inSubmission = false;
+    }
   }
 }
